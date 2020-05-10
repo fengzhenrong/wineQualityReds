@@ -1,0 +1,669 @@
+wineQualityReds分析报告
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# 参考链接，红酒成分http://blog.sina.com.cn/s/blog_8cad55d90102x3yg.html
+
+library(ggplot2)
+library(dplyr)
+library(GGally)
+library(gridExtra)
+library(gpairs)
+library(memisc)
+library(car)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# 加载数据
+pf_wine <- read.csv('wineQualityReds.csv')
+head(pf_wine)
+#citric.acid有很多为0的数据，去掉数据为0的,后面分析还有一条为1的数据也可以去掉
+#pf_wine <- subset(pf_winereds,citric.acid>0 & citric.acid <1)
+```
+
+
+# 单变量分析
+```{r echo=FALSE,warning = FALSE}
+# 查看数据集结构
+names(pf_wine)
+str(pf_wine)
+summary(pf_wine)
+# 我们主要分析红葡萄酒质量，分析红酒的quality字段
+summary(pf_wine$quality)
+table(pf_wine$quality)
+```
+
+```{r}
+# 创建一个直方图公共函数，后简化代码量
+wine_plot <- function(varname, binwidth) {
+  return (ggplot(aes_string(x = varname), data = pf_wine) + 
+            geom_histogram(binwidth = binwidth))
+}
+```
+
+##### 绘画红葡萄酒的质量（quality）直方图
+```{r echo=FALSE,warning = FALSE}
+# quality的数据都在3，8之间，所以我们刷选x轴3～8，1分割
+wine_plot('quality',0.5) + 
+  scale_x_continuous(breaks = seq(3,8,1)) + 
+  labs(title = 'quality of wine', x ='quality', y = 'count')
+
+```
+
+##### 分析：
+从图中可以看出红葡萄酒的质量大部分集中在5和6中，红葡萄酒的质量正态分布
+
+
+##### 绘画红葡萄酒的fixed.acidity(固定酸度)直方图
+```{r echo=FALSE,warning = FALSE}
+# fixed.acidity的数据都在4，17之间，所以我们刷选x轴4～17，1分割
+wine_plot('fixed.acidity',1) + 
+  scale_x_continuous(breaks = seq(4,17,1))  + 
+  labs(title = 'fixed.acidity of wine', x ='fixed.acidity(g / dm ^ 3)', y = 'count')
+```
+
+##### 分析：
+固定酸度大部分集中在6.5和9.5之间。
+
+##### 绘画红葡萄酒的volatile.acidity（挥发性酸度）直方图
+```{r echo=FALSE,warning = FALSE}
+# volatile.acidity的数值比较小，所以binwidth选择0.1比较直观
+wine_plot('volatile.acidity',0.1) + 
+  labs(title = 'volatile.acidity of wine', x ='volatile.acidity(g / dm ^ 3)', y = 'count')
+```
+
+##### 分析：
+挥发性酸度大部分集中在0.25和0.75之间。
+
+##### 绘画红葡萄酒的citric.acid（柠檬酸）直方图
+```{r echo=FALSE,warning = FALSE}
+# citric.acid的数值比较小，所以binwidth选择0.01比较直观
+wine_plot('citric.acid',0.01) + 
+  scale_x_continuous(breaks = seq(0,1,0.1)) +
+  labs(title = 'citric.acid of wine', x ='citric.acid(g / dm ^ 3)', y = 'count')
+
+```
+
+##### 分析：
+柠檬酸程右偏态分布，大部分集中在0和0.55之间。从表中可以看出存在有很多为0的数据的
+异常值，还有后面有个1的异常值。
+
+##### 绘画红葡萄酒的residual.sugar（残留糖）直方图
+```{r echo=FALSE,warning = FALSE}
+# residual.sugar的数值比较小，所以binwidth选择0.1比较直观,数据都在0~16之间，
+# 所以我们刷选x轴0～16，以1分割
+wine_plot('residual.sugar',0.1) + 
+  scale_x_continuous(breaks = seq(0,16,1))  +
+  labs(title = 'residual.sugar of wine', x ='residual.sugar(g / dm ^ 3)', y = 'count')
+```
+
+##### 分析：
+残留糖呈右偏态分布，大部分集中在1.5和3之间。有个别值比较异常，超出集中区域很多，
+超出9的比较异常，可以去掉
+
+##### 绘画红葡萄酒的chlorides（氯化物）直方图
+```{r echo=FALSE,warning = FALSE}
+# chlorides的数值比较小，所以binwidth选择0.01比较直观,数据都在0~0.6之间，
+# 所以我们刷选x轴0～0.6，以0.05分割
+wine_plot('chlorides',0.01) + 
+  scale_x_continuous(breaks = seq(0,0.6,0.05))  +
+  labs(title = 'chlorides of wine', x ='chlorides(g / dm ^ 3)', y = 'count')
+
+```
+
+##### 分析：
+氯化物呈右偏态分布，大部分集中在0.05和0.125之间。有个别值比较异常，超出集中区域
+很多，超出0.3的比较异常，可以去掉
+
+##### 绘画红葡萄酒的free.sulfur.dioxide（游离二氧化硫）直方图
+```{r echo=FALSE,warning = FALSE}
+# free.sulfur.dioxide的数值比较大，数据分布在0～60之间，所以我们刷选x轴0～60，以5分割
+wine_plot('free.sulfur.dioxide',1) + 
+  scale_x_continuous(breaks = seq(0,60,5))  +
+  labs(title = 'free.sulfur.dioxide of wine', x ='free.sulfur.dioxide(mg / dm ^ 3)', 
+       y = 'count')
+
+```
+
+##### 分析：
+游离二氧化呈右偏态分布,有个别值比较异常，超出集中区域很多，超出60的比较异常，
+可以去掉
+
+##### 绘画红葡萄酒的total.sulfur.dioxide（总二氧化硫）直方图
+```{r echo=FALSE,warning = FALSE}
+# total.sulfur.dioxide的数值比较大，所以binwidth选择10比较直观,数据都在0~170之间，
+# 所以我们刷选x轴0～170，以20分割
+wine_plot('total.sulfur.dioxide',10) + 
+  scale_x_continuous(breaks = seq(0,170,20)) +
+  labs(title = 'total.sulfur.dioxide of wine', x ='total.sulfur.dioxide(mg / dm ^ 3)', 
+       y ='count')
+
+```
+
+##### 分析：
+总二氧化硫呈右偏态分布，有个别值比较异常，超出集中区域很多，超出170的比较异常，
+可以去掉
+
+##### 从表结构中可以看到红酒有free.sulfur.dioxide（游离二氧化硫）和
+##### total.sulfur.dioxide（总二氧化硫），通过晚上查，溶解性气体还有二氧化碳的
+##### 变量，所以我定义一个新的变量sulfur.dioxide,值为总二氧化硫减去游离二氧化硫。
+##### 绘画红葡萄酒的新变量sulfur.dioxide（二氧化硫）直方图
+```{r echo=FALSE,warning = FALSE}
+#我定义一个新的变量sulfur.dioxide,值为总二氧化硫减去游离二氧化硫
+pf_wine$sulfur.dioxide <-  pf_wine$total.sulfur.dioxide - 
+  pf_wine$free.sulfur.dioxide
+
+# sulfur.dioxide的数值比较大，所以binwidth选择10比较直观,数据都在0~140之间，
+# 所以我们刷选x轴0～140，以20分割
+wine_plot('sulfur.dioxide',10) + 
+  scale_x_continuous(breaks = seq(0,140,20))  +
+  labs(title = 'sulfur.dioxide of wine', x ='sulfur.dioxide(mg / dm ^ 3)', y = 'count')
+```
+
+##### 分析：
+二氧化硫呈右偏态分布,，超出集中区域很多，超出140的比较异常，可以去掉
+
+##### 绘画红葡萄酒的density（密度）直方图
+```{r echo=FALSE,warning = FALSE}
+# density的数值比较小，所以binwidth选择0.001比较直观,数据都在0,1.2之间，
+# 所以我们刷选x轴0,1.2，以0.005分割
+wine_plot('density',0.001) + 
+  scale_x_continuous(breaks = seq(0,1.2,0.005))   +
+  labs(title = 'density of wine', x ='density(g / cm ^ 3)', y = 'count')
+```
+
+##### 分析：
+密度呈正态分布
+
+##### 绘画红葡萄酒的pH直方图
+```{r echo=FALSE,warning = FALSE}
+# pH的数值比较小，所以binwidth选择0.05比较直观,数据都在0,1.2之间，
+# 所以我们刷选x轴0,4，以0.01分割
+wine_plot('pH',0.05) + 
+  scale_x_continuous(breaks = seq(0,4,0.1))   +
+  labs(title = 'pH of wine', x ='pH', y = 'count')
+```
+
+##### 分析：
+PH呈正态分布，大部分集中3.0和3.6之间
+
+##### 绘画红葡萄酒的sulphates（硫酸盐）直方图
+```{r echo=FALSE,warning = FALSE}
+# sulphates的数值比较小，所以binwidth选择0.1比较直观
+wine_plot('sulphates',0.1) + 
+  labs(title = 'sulphates of wine', x ='sulphates(g / dm3)', y = 'count')
+```
+
+##### 分析：
+硫酸盐呈右偏态分布
+
+##### 绘画红葡萄酒的alcohol（酒精）直方图
+```{r echo=FALSE,warning = FALSE}
+# alcohol的数值比较小，所以binwidth选择0.1比较直观
+wine_plot('alcohol',0.1) + 
+  labs(title = 'alcohol of wine', x ='alcohol(%)', y = 'count')
+```
+
+##### 分析：
+酒精呈右偏态分布
+
+# 清理数据集
+##### citric.acid存在有很多为0的数据的异常值，还有后面有个1的异常值
+##### residual.sugar有个别值比较异常，超出集中区域很多，超出9的比较异常
+##### chlorides有个别值比较异常，超出集中区域很多，超出0.3的比较异常
+##### 创建新数据集pf_wineclean <- subset(pf_wine,citric.acid>0 & 
+##### citric.acid <1 & residual.sugar<9 & chlorides<0.3)
+```{r echo=FALSE,warning = FALSE}
+pf_wineclean <- subset(pf_wine,citric.acid>0 & citric.acid <1 & residual.sugar<9 
+                       & chlorides<0.3)
+```
+
+
+### 你的数据集结构是什么？
+我初始数据集有1499条数据，13个变量；
+整理后的数据集有1433条数据，14个变量；
+
+### 你的数据集内感兴趣的主要特性有哪些？
+我兴趣的特征有以下几个
+1:红酒质量quality；
+2:新变量sulfur.dioxide（二氧化硫），从网上查的资料二氧化硫有杀菌、抗氧化、澄清酒液
+和提高色素和酚类物质含量等多重作用；
+3:alcohol（酒精度），酒都有酒精度数
+4:酸度，喝过红酒，红酒有点酸涩的味道。
+5:甜度（residual sugar）
+
+### 你认为数据集内哪些其他特征可以帮助你探索兴趣特点？
+我认为硫酸盐(sulphates)也有关系
+### 根据数据集内已有变量，你是否创建了任何新变量？
+有创建新变量sulfur.dioxide（二氧化硫）
+### 在已经探究的特性中，是否存在任何异常分布？你是否对数据进行一些操作，如清洁、调整或改变数据的形式？如果是，你为什么会这样做？
+在探索数据集过程中，发现citric.acid存在有很多为0的数据的异常值，还有后面有个1的
+异常值；residual.sugar有个别值比较异常，超出集中区域很多，超出9的比较异常；
+chlorides有个别值比较异常，超出集中区域很多，超出0.3的比较异常，因为异常数据
+比较少，还有为0的数据不可能，所以我把这些数据都清理掉。
+
+
+# 双变量绘图选择
+##### 使用ggcorr绘画相关关系图
+
+```{r echo=FALSE,fig.width=12,fig.height=12,warning = FALSE}
+# 从单变量分析，我所关心的变量有("fixed.acidity", "volatile.acidity", "citric.acid",
+#"residual.sugar", "chlorides", "sulfur.dioxide", "density", "pH","sulphates", 
+#"alcohol","quality")
+# 通过ggcorr绘画出这些变量的相关矩阵图
+ggcorr(data = pf_wineclean[,c("fixed.acidity", "volatile.acidity", "citric.acid",
+                    "residual.sugar", "chlorides", "sulfur.dioxide", "density", 
+                    "pH", "sulphates", "alcohol","quality")], 
+       method = c("pairwise", "pearson"),
+       nbreaks = 4, palette = "PuOr", label = TRUE,
+       name = "spearman correlation coeff.(rho)",
+       hjust = 0.8, angle = -70, size = 3) +
+  ggtitle("Spearman Correlation coefficient Matrix")
+```
+
+##### 从图中可以看出我关注的固定酸度(fixed acidity)，柠檬酸(citric acid)，
+残留糖(residual sugar)，硫酸盐(sulphates)，酒精(alcohol)跟质量(quality)正相关性，
+其中酸度的volatile.acidity（挥发性酸度跟质量(quality)负相关，新变量sulfur.dioxide
+（二氧化硫）跟质量(quality)负相关
+
+# 双变量分析
+##### 分析固定酸度(fixed acidity)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析固定酸度(fixed acidity)和质量(quality)关系,以质量(quality)为x轴
+# 固定酸度(fixed acidity)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = fixed.acidity), data = pf_wineclean) +
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) + 
+  labs(title = 'Relationship of fixed.acidity of quality', x ='quality', 
+       y ='fixed.acidity(g / dm ^ 3)')
+# cor.test(pf_wineclean$fixed.acidity, pf_wineclean$quality)
+```
+
+##### 分析：
+从图中看出固定酸度(fixed acidity)和质量(quality)关联性不大
+
+##### 分析挥发性酸度(volatile.acidity)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析挥发性酸度(volatile.acidity)和质量(quality)关系,以质量(quality)为x轴
+# 挥发性酸度(volatile.acidity)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = volatile.acidity), data = pf_wineclean) + 
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) + 
+  labs(title = 'Relationship of volatile.acidity of quality', x ='quality', 
+       y = 'volatile.acidity(g / dm ^ 3)')
+# by(pf_wineclean$volatile.acidity, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中看出质量(quality)越高的红酒相对的挥发性酸度(volatile.acidity)的中位数越小，
+质量越好的红酒，挥发性酸度越小
+
+##### 分析柠檬酸(citric acid)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析柠檬酸(citric acid)和质量(quality)关系,以质量(quality)为x轴
+# 柠檬酸(citric acid)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = citric.acid), data = pf_wineclean) + 
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) +
+  labs(title = 'Relationship of citric.acid of quality', x ='quality', 
+       y = 'citric.acid(g / dm ^ 3)')
+# by(pf_wineclean$citric.acid, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中看出质量(quality)越高的红酒相对的柠檬酸(citric acid)的中位数越多，
+
+##### 分析新变量二氧化硫(sulfur.dioxide)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析新变量二氧化硫(sulfur.dioxide)和质量(quality)关系,以质量(quality)为x轴
+# 二氧化硫(sulfur.dioxide)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = sulfur.dioxide), data = pf_wineclean) +
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) +
+  labs(title = 'Relationship of sulfur.dioxide of quality', x ='quality', 
+       y ='sulfur.dioxide(mg / dm ^ 3)')
+# by(pf_wineclean$sulfur.dioxide, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中看出质量(quality)与新变量二氧化硫(sulfur.dioxide)关联性不大
+
+##### 硫酸盐(sulphates)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析硫酸盐(sulphates)和质量(quality)关系,以质量(quality)为x轴
+# 硫酸盐(sulphates)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = sulphates), data = pf_wineclean) + 
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) +
+  labs(title = 'Relationship of sulphates of quality', x ='quality', 
+       y ='sulphates(g / dm3)')
+# by(pf_wineclean$sulphates, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中看出质量(quality)越高的红酒相对的硫酸盐(sulphates)的中位数越多，上升不大，
+基本上都在1.0以下
+
+##### 分析酒精(alcohol)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析酒精(alcohol)和质量(quality)关系,以酒精(alcohol)为x轴，质量(quality)为y轴
+# 使用jitter抖点图展示
+ggplot(aes(x = alcohol, y = quality), data = pf_wineclean) +
+  geom_jitter(alpha=1/10) +
+  labs(title = 'Relationship of alcohol of quality', x ='alcohol(%)', y = 'quality')
+# by(pf_wineclean$alcohol, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中酒精(alcohol)越大，红酒质量(quality)越好
+
+##### 分析酒精(alcohol)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析酒精(alcohol)和质量(quality)关系,以质量(quality)为x轴
+# 酒精(alcohol)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = alcohol), data = pf_wineclean) +
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) +
+  labs(title = 'Relationship of alcohol of quality', x ='quality', y = 'alcohol(%)')
+# by(pf_wineclean$alcohol, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中看出质量(quality)越高的红酒相对的酒精(alcohol)的中位数越多，越好的红酒需要
+酒精度越高
+
+##### 分析残留糖(residual.sugar)和质量(quality)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析残留糖(residual.sugar)和质量(quality)关系,以质量(quality)为x轴
+# 残留糖(residual.sugar)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = residual.sugar), data = pf_wineclean) +
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) +
+  labs(title = 'Relationship of residual.sugar of quality', x ='quality', y = 
+         'residual.sugar(g / dm ^ 3)')
+# by(pf_wineclean$residual.sugar, pf_wineclean$quality, summary)
+```
+
+##### 分析：
+从图中看出残留糖(residual.sugar)和质量(quality)关系关联性不大，基本上红酒残留糖
+(residual.sugar)的中位数都在2.5以下，四分位数Q3在2.7以下，红酒都是需要糖分不多，
+
+##### 分析挥发性酸度(volatile.acidity)和酒精(alcohol)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析挥发性酸度(volatile.acidity)和酒精(alcohol)关系,以酒精(alcohol)为x轴
+# 挥发性酸度(volatile.acidity)为y轴
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = alcohol, y = volatile.acidity), data = pf_wineclean) + 
+  geom_jitter(alpha = 0.1) +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of alcohol of volatile.acidity', x ='alcohol', y = 'volatile.acidity(g / dm ^ 3)')
+
+```
+
+##### 分析：
+从图中酒精(alcohol)越大，挥发性酸度(volatile.acidity)越小
+
+##### 分析柠檬酸(citric acid)和酒精(alcohol)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析柠檬酸(citric acid)和酒精(alcohol)关系,以酒精(alcohol)为x轴
+# 柠檬酸(citric acid)为y轴
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = alcohol, y = citric.acid), data = pf_wineclean) + 
+  geom_jitter(alpha = 0.1) +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of alcohol of citric.acid', x ='alcohol', 
+       y ='citric.acid(g / dm ^ 3)')
+
+```
+
+##### 分析：
+从图中酒精(alcohol)越大，柠檬酸(citric acid)越大
+
+##### 分析硫酸盐(sulphates)和酒精(alcohol)关系
+```{r echo=FALSE,warning = FALSE}
+# 分析硫酸盐(sulphates)和酒精(alcohol)关系,以酒精(alcohol)为x轴
+# 硫酸盐(sulphates)为y轴
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = alcohol, y = sulphates), data = pf_wineclean) +
+  geom_jitter(alpha = 0.2) +
+  ylim(0.4,0.9) +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of alcohol of sulphates', x ='alcohol(%)', 
+       y ='sulphates(g / dm3)')
+```
+
+##### 分析：
+从图中酒精(alcohol)越大，挥发性酸度(volatile.acidity)越大，集中在0.4～0.9之间
+
+### 探讨你在这部分探究中观察到的一些关系。这些感兴趣的特性与数据集内其他特性有什么区别？
+从上面几个图分析，我感兴趣的特征与质量(quality)的关系
+1:酸度的三个变量（固定酸度(fixed acidity)、挥发性酸度(volatile.acidity)、
+柠檬酸(citric acid)），固定酸度fixedacidity与质量(quality)关联性不大，
+挥发性酸度(volatile.acidity)与质量(quality)负相关，柠檬酸(citricacid)与
+质量(quality)正相关，在酸度三个变量中与quality相关最大；不过柠檬酸(citricacid)的
+相关性基本上都在1.0以下；
+2:新变量sulfur.dioxide（二氧化硫）与质量(quality)关联性不大
+3:酒精(alcohol)与质量(quality)正相关关系，在这些特征里面相关性最大的；
+4:残留糖(residual.sugar)和质量(quality)关系关联性不大，基本上红酒
+残留糖(residual.sugar)的中位数都在2.5以下，四分位数Q3在2.7以下，红酒都是需要糖分不多，
+可以看出对红酒影响比较大的是挥发性酸度(volatile.acidity)、柠檬酸(citricacid)、
+硫酸盐(sulphates)、酒精(alcohol)这四个变量。
+
+### 你是否观察到主要特性与其他特性之间的有趣关系？
+从上面分析可以看出对红酒影响比较大的是挥发性酸度(volatile.acidity)、
+柠檬酸(citric acid)、硫酸盐(sulphates)、酒精(alcohol)这四个变量，所以我分析了
+挥发性酸度(volatile.acidity)、柠檬酸(citricacid)、硫酸盐(sulphates)分别与
+酒精(alcohol)之间的关系。
+
+### 你发现最强的关系是什么？
+我发现是酒精(alcohol)跟质量(quality)有很强的正相关，挥发性酸度(volatile.acidity)
+跟质量(quality)有很强的负相关。
+
+# 多变量绘图分析
+
+##### 查看红酒变量的关系("fixed.acidity", "volatile.acidity", "citric.acid",
+##### "residual.sugar", "sulphates", "alcohol","quality")
+```{r echo=FALSE,warning = FALSE}
+# 从双变量分析，我所关心的变量有("fixed.acidity", "volatile.acidity", "citric.acid",
+#                                 "residual.sugar", "sulphates", "alcohol","quality")
+# 通过scatterplotMatrix绘画出这些变量的数据可视化图
+pf_wine_Matrix <- pf_wineclean[,c("fixed.acidity", "volatile.acidity", "citric.acid",
+                                  "residual.sugar", "sulphates", "alcohol","quality")]
+
+scatterplotMatrix(pf_wine_Matrix, alpha=0.1, spread=FALSE, smoother.args=list(lty=2),
+        main="Plot Matrix")
+```
+
+##### 分析挥发性酸度(volatile acidity)、柠檬酸(citric acid)与质量(quality)的关系
+```{r echo=FALSE,warning = FALSE}
+# 分析挥发性酸度(volatile acidity)、柠檬酸(citric acid)与质量(quality)的关系,
+# 以挥发性酸度(volatile acidity)为x轴,柠檬酸(citric acid)为y轴,
+# 将quality转为factor因子,以quality为类别变量进行红色渐变区分；
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = volatile.acidity, y = citric.acid, color = factor(quality))
+       , data = pf_wineclean) +
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Reds") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of volatile acidity VS citric acid', x =
+         'volatile.acidity(g / dm ^ 3)', y = 'citric.acid(g / dm ^ 3)')
+```
+
+##### 分析：
+从表中可以看出挥发性酸度(volatile acidity)跟柠檬酸(citric acid)发比关系，质量越好的红酒需要的挥发性酸度(volatile acidity)越小，
+柠檬酸(citric acid)越大
+
+##### 分析硫酸盐(sulphates)、柠檬酸(citric acid)与质量(quality)的关系
+```{r echo=FALSE,warning = FALSE}
+# 分析硫酸盐(sulphates)、柠檬酸(citric acid)与质量(quality)的关系
+# 以硫酸盐(sulphates)为x轴,柠檬酸(citric acid)为y轴,
+# 将quality转为factor因子,以quality为类别变量进行红色渐变区分；
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = sulphates, y = citric.acid, color = factor(quality)), 
+       data = pf_wineclean) +
+  geom_jitter(alpha = 0.2) +
+  scale_x_continuous(limits = c(0.5,1.0),breaks = seq(0.5,1.0,0.1))+
+  scale_color_brewer(palette = "Reds") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of sulphates VS citric acid', x ='sulphates(g / dm3)', 
+       y ='citric.acid(g / dm ^ 3)')
+```
+
+##### 分析：
+从表中可以看出硫酸盐(sulphates)跟柠檬酸(citric acid)正比关系，质量越好的红酒需要硫酸盐(sulphates)越大，柠檬酸(citric acid)越大
+
+##### 分析硫酸盐(sulphates)、挥发性酸度(volatile acidity)与质量(quality)的关系
+```{r echo=FALSE,warning = FALSE}
+# 分析硫酸盐(sulphates)、挥发性酸度(volatile acidity)与质量(quality)的关系
+# 以硫酸盐(sulphates)为x轴,挥发性酸度(volatile acidity)为y轴,
+# 将quality转为factor因子,以quality为类别变量进行红色渐变区分；
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = sulphates, y = volatile.acidity, color = factor(quality)), 
+       data = pf_wineclean) +
+  scale_x_continuous(limits = c(0.5,1.0),breaks = seq(0.5,1.0,0.1))+
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Reds") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of sulphates VS volatile acidity', x ='sulphates(g / dm3)', 
+       y = 'volatile acidity(g / dm ^ 3)')
+```
+
+##### 分析：
+从表中可以看出硫酸盐(sulphates)跟挥发性酸度(volatile acidity)反比关系，质量(quality)越好的红酒硫酸盐(sulphates)越大，
+挥发性酸度(volatile acidity)越小
+
+##### 分析硫酸盐(sulphates)、酒精(alcohol)与质量(quality)的关系
+```{r echo=FALSE,warning = FALSE}
+# 分析硫酸盐(sulphates)、酒精(alcohol)与质量(quality)的关系
+# 以硫酸盐(sulphates)为x轴,酒精(alcohol)为y轴,
+# 将quality转为factor因子,以quality为类别变量进行红色渐变区分；
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = sulphates, y = alcohol, color = factor(quality)), 
+       data = pf_wineclean) +
+  scale_x_continuous(limits = c(0.5,1.0),breaks = seq(0.5,1.0,0.1))+
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Reds") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of sulphates VS alcohol', x ='sulphates(g / dm3)', 
+       y = 'alcohol(%)')
+```
+
+##### 分析：
+从表中可以看出硫酸盐(sulphates)跟酒精(alcohol)正比比关系，质量(quality)越好的
+红酒硫酸盐(sulphates)越大，酒精(alcohol)越高
+
+# 多变量分析
+
+###  探讨你在这部分探究中观察到的一些关系。通过观察感兴趣的特性，
+###  是否存在相互促进的特性？
+在分析中发现
+1:看出挥发性酸度(volatile acidity)跟柠檬酸(citric acid)发比关系，质量越好的红酒需要的挥发性酸度(volatile acidity)越小，
+柠檬酸(citric acid)越大；
+2:硫酸盐(sulphates)跟柠檬酸(citric acid)正比关系，质量越好的红酒需要硫酸盐(sulphates)越大，柠檬酸(citric acid)越大；
+3:硫酸盐(sulphates)跟挥发性酸度(volatile acidity)反比关系，质量(quality)越好的红酒硫酸盐(sulphates)越大，
+挥发性酸度(volatile acidity)越小；
+4:硫酸盐(sulphates)跟酒精(alcohol)正比比关系，质量(quality)越好的红酒
+硫酸盐(sulphates)越大，酒精(alcohol)越高
+
+### 这些特性之间是否存在有趣或惊人的联系呢？
+挥发性酸度(volatile acidity)跟柠檬酸(citric acid)有很强负关系，挥发性酸度越小，
+红酒质量越好
+### 选项：你是否创建过数据集的任何模型？讨论你模型的优缺点。
+没有创建数据集的模型
+------
+
+# 定稿图与总结
+
+### 绘图一
+分析酒精(alcohol)和质量(quality)关系
+
+```{r echo=FALSE,warning = FALSE}
+# 分析酒精(alcohol)和质量(quality)关系,以质量(quality)为x轴
+# 酒精(alcohol)为y轴，将quality转为factor因子;
+# 使用jitter抖点图跟box箱线图展示
+ggplot(aes(x = factor(quality), y = alcohol), data = pf_wineclean) +
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(alpha=0.8) +
+  labs(title = 'Relationship of alcohol of quality', x ='quality', y = 'alcohol(%)')
+# by(pf_wineclean$alcohol, pf_wineclean$quality, summary)
+```
+
+
+### 描述一
+从图中看出质量(quality)越高的红酒相对的酒精(alcohol)的中位数越多，
+越好的红酒需要酒精度越高
+
+### 绘图二
+分析挥发性酸度(volatile acidity)、柠檬酸(citric acid)与质量(quality)的关系
+
+```{r echo=FALSE,warning = FALSE}
+# 分析挥发性酸度(volatile acidity)、柠檬酸(citric acid)与质量(quality)的关系,
+# 以挥发性酸度(volatile acidity)为x轴,柠檬酸(citric acid)为y轴,
+# 将quality转为factor因子,以quality为类别变量进行红色渐变区分；
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = volatile.acidity, y = citric.acid, color = factor(quality)), 
+       data = pf_wineclean) +
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Reds") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of volatile acidity VS citric acid', 
+       x ='volatile.acidity(g / dm ^ 3)', y = 'citric.acid(g / dm ^ 3)')
+```
+
+### 描述二
+从图中看出质量(quality)越高的红酒需要的挥发性酸度(volatile acidity)越小，
+而柠檬酸(citric acid)越多；
+
+### 绘图三
+分析硫酸盐(sulphates)、柠檬酸(citric acid)与质量(quality)的关系
+
+```{r echo=FALSE,warning = FALSE}
+# 分析硫酸盐(sulphates)、柠檬酸(citric acid)与质量(quality)的关系
+# 以硫酸盐(sulphates)为x轴,柠檬酸(citric acid)为y轴,
+# 将quality转为factor因子,以quality为类别变量进行红色渐变区分；
+# 使用jitter抖点图展示并且画出两者的相关关系线
+ggplot(aes(x = sulphates, y = citric.acid, color = factor(quality)),
+       data = pf_wineclean) +
+  geom_jitter(alpha = 0.2) +
+  scale_x_continuous(limits = c(0.5,1.0),breaks = seq(0.5,1.0,0.1))+
+  scale_color_brewer(palette = "Reds") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  labs(title = 'Relationship of sulphates VS citric acid', x ='sulphates(g / dm3)', 
+       y = 'citric.acid(g / dm ^ 3)')
+```
+
+### 描述三
+从图中看出质量(quality)越高的红酒需要的较多的硫酸盐(sulphates)；
+------
+
+# 反思
+通过数据集有1499条数据，13个变量；整理后的数据集有1433条数据，14个变量，
+还有新增了变量新变量sulfur.dioxide（二氧化硫），从网上查的资料二氧化硫有杀菌、
+抗氧化、澄清酒液和提高色素和酚类物质含量等多重作用，但是实际绘图
+sulfur.dioxide（二氧化硫）对红酒质量影响不大，通过单变量绘图到多变量绘图分析，
+得出对红酒影响比较大的几个变量是挥发性酸度(volatile.acidity)、
+柠檬酸(citric acid)、硫酸盐(sulphates)、酒精(alcohol)这四个变量；
+通过对这个四个变量的分析得出：
+1:质量高的红酒需要挥发性酸度(volatile.acidity)极小；
+2:质量高的红酒需要较多的柠檬酸(citric acid)；
+3:质量高的红酒需要较多的硫酸盐(sulphates)；
+4:质量高的红酒需要酒精(alcohol)的酒精度高；
+在分析过程中，高质量(quality)（7、8）的数据比较少，对分析存在一定影响，
+可能分析不够准确；绘图的时候发现质量8的关系线条跟其他质量的关系线条有偏差；
+
+##### 分析过程中的难点
+在分析过程中高质量（7、8）的红酒数据量较少，比较难分析出哪些变量对红酒有影响；
+
+##### 分析过程中成功的发现部分
+在分析过程中发现挥发性酸度(volatile.acidity)跟酒精(alcohol)对红酒的影响较大。
+
+##### 未来如何进一步丰富分析内容和提高报告质量
+高质量（7、8）的红酒数据量较少，导致分析不太理想，后续应该对数据建模，创建预测
+红酒的质量的模型。
